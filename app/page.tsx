@@ -40,7 +40,7 @@ function baseItems(key: string, offDays: string[]): Item[] {
   const day = date.getDay();
   const items: Item[] = [];
   if (day >= 1 && day <= 5 && !offDays.includes(key)) {
-    items.push({ id: `${key}-arrival`, time: "08:30–09:00", title: "入园时间", kind: "class" });
+    items.push({ id: `${key}-arrival`, time: "08:30–09:00", title: "去学校", kind: "class" });
     classSchedule[day].forEach(([time, title], i) =>
       items.push({ id: `${key}-c${i}`, time, title, kind: "class" })
     );
