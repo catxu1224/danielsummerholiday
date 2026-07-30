@@ -123,6 +123,8 @@ export default function Home() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [showCalendar, setShowCalendar] = useState(true);
   const [newTask, setNewTask] = useState({ title: "", time: "18:30" });
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
   const recognitionRef = useRef<any>(null);
 
   const loadCloudState = () => {
@@ -202,6 +204,19 @@ export default function Home() {
 
   const addTask = () => {
     if (!newTask.title.trim()) return;
+    if (editingTaskId) {
+      const next = {
+        ...custom,
+        [selected]: (custom[selected] || []).map((item) =>
+          item.id === editingTaskId ? { ...item, title: newTask.title.trim(), time: newTask.time } : item
+        ),
+      };
+      setCustom(next);
+      save({ custom: next });
+      setEditingTaskId(null);
+      setNewTask({ title: "", time: "18:30" });
+      return;
+    }
     const item: Item = {
       id: `${selected}-free-${Date.now()}`,
       title: newTask.title.trim(),
@@ -212,6 +227,32 @@ export default function Home() {
     setCustom(next);
     save({ custom: next });
     setNewTask({ title: "", time: "18:30" });
+  };
+
+  const startEditTask = (item: Item) => {
+    setEditingTaskId(item.id);
+    setNewTask({ title: item.title, time: item.time });
+    requestAnimationFrame(() => document.getElementById("free-activity-form")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+    setNewTask({ title: "", time: "18:30" });
+  };
+
+  const deleteCustomTask = () => {
+    if (!deleteTarget) return;
+    const nextCustom = {
+      ...custom,
+      [selected]: (custom[selected] || []).filter((item) => item.id !== deleteTarget.id),
+    };
+    const nextRecords = { ...records };
+    delete nextRecords[deleteTarget.id];
+    setCustom(nextCustom);
+    setRecords(nextRecords);
+    save({ custom: nextCustom, records: nextRecords });
+    if (editingTaskId === deleteTarget.id) cancelEditTask();
+    setDeleteTarget(null);
   };
 
   const updateSpecial = (value: string) => {
@@ -331,18 +372,25 @@ export default function Home() {
                   <h3>{item.title}</h3>
                   {(item.note || item.mood) && <p className="saved-note">{item.mood} {item.note}</p>}
                 </div>
-                <button className="note-btn" onClick={() => setEditing(item)} aria-label={`记录${item.title}体验`}>✎</button>
+                <div className="task-actions">
+                  {item.kind === "free" && <>
+                    <button className="manage-btn" onClick={() => startEditTask(item)} aria-label={`修改${item.title}`}>✎</button>
+                    <button className="manage-btn delete" onClick={() => setDeleteTarget(item)} aria-label={`删除${item.title}`}>×</button>
+                  </>}
+                  <button className="note-btn" onClick={() => setEditing(item)} aria-label={`记录${item.title}体验`}>☻</button>
+                </div>
                 <button className="check-btn" onClick={() => toggleComplete(item)} aria-label={`${item.completed ? "取消" : ""}完成${item.title}`}>{item.completed ? "✓" : ""}</button>
               </article>
             ))}
 
-            <div className="add-card">
-              <div><span>＋</span><div><h3>添加自由活动</h3><p>画画、阅读、和朋友玩……</p></div></div>
+            <div className={`add-card ${editingTaskId ? "editing" : ""}`} id="free-activity-form">
+              <div><span>{editingTaskId ? "✎" : "＋"}</span><div><h3>{editingTaskId ? "修改自由活动" : "添加自由活动"}</h3><p>{editingTaskId ? "修改完成后点击保存" : "画画、阅读、和朋友玩……"}</p></div></div>
               <div className="add-form">
                 <input aria-label="活动时间" type="time" value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} />
                 <input aria-label="活动内容" placeholder="今天还想做什么？" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTask()} />
-                <button onClick={addTask}>添加</button>
+                <button onClick={addTask}>{editingTaskId ? "保存" : "添加"}</button>
               </div>
+              {editingTaskId && <button className="cancel-edit" onClick={cancelEditTask}>取消修改</button>}
             </div>
           </div>
         </section>
@@ -365,6 +413,20 @@ export default function Home() {
               <button onClick={startVoice} className="voice" title="语音输入">🎙️ <span>语音说一说</span></button>
             </div>
             <button className="save-btn" onClick={saveReflection}>保存记录</button>
+          </section>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setDeleteTarget(null)}>
+          <section className="confirm-card" role="alertdialog" aria-modal="true" aria-label="确认删除活动">
+            <span>🗑️</span>
+            <h2>删除这个活动？</h2>
+            <p>“{deleteTarget.title}”及其打卡和体验记录都会被删除。</p>
+            <div>
+              <button onClick={() => setDeleteTarget(null)}>保留活动</button>
+              <button className="danger" onClick={deleteCustomTask}>确认删除</button>
+            </div>
           </section>
         </div>
       )}
