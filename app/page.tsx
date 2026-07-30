@@ -59,12 +59,16 @@ function Month({
   selected,
   offDays,
   progress,
+  custom,
+  special,
   onSelect,
 }: {
   month: number;
   selected: string;
   offDays: string[];
   progress: Record<string, boolean>;
+  custom: Record<string, Item[]>;
+  special: Record<string, string>;
   onSelect: (key: string) => void;
 }) {
   const first = new Date(2026, month - 1, 1);
@@ -82,6 +86,13 @@ function Month({
           const weekday = new Date(2026, month - 1, day).getDay();
           const classDay = weekday >= 1 && weekday <= 5 && !offDays.includes(key);
           const off = weekday >= 1 && weekday <= 5 && offDays.includes(key);
+          const dayItems = [...baseItems(key, offDays), ...(custom[key] || [])];
+          const icons = [
+            dayItems.some((item) => item.kind === "class") ? "📚" : "",
+            dayItems.some((item) => item.title.includes("钢琴")) ? "🎹" : "",
+            dayItems.some((item) => /体能|体育|运动|足球|篮球|游泳|跑步/.test(item.title)) ? "⚽" : "",
+            dayItems.some((item) => /画|绘|美术/.test(item.title)) ? "🎨" : "",
+          ].filter(Boolean);
           return (
             <button
               key={key}
@@ -89,8 +100,11 @@ function Month({
               onClick={() => onSelect(key)}
               aria-label={`${month}月${day}日${classDay ? "，上课" : "，不上课"}`}
             >
-              <span>{day}</span>
-              <i>{progress[key] ? "✓" : classDay ? "课" : off ? "休" : ""}</i>
+              {special[key] && <b className="special-emoji">{special[key]}</b>}
+              <span className="date-number">{day}</span>
+              <span className="activity-icons">{icons.map((icon, index) => <i key={`${icon}-${index}`}>{icon}</i>)}</span>
+              {progress[key] && <b className="date-check">✓</b>}
+              {off && icons.length === 0 && <small className="rest-label">休</small>}
             </button>
           );
         })}
@@ -104,6 +118,7 @@ export default function Home() {
   const [offDays, setOffDays] = useState<string[]>([]);
   const [records, setRecords] = useState<Record<string, Partial<Item>>>({});
   const [custom, setCustom] = useState<Record<string, Item[]>>({});
+  const [special, setSpecial] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Item | null>(null);
   const [showCalendar, setShowCalendar] = useState(true);
   const [newTask, setNewTask] = useState({ title: "", time: "18:30" });
@@ -115,11 +130,12 @@ export default function Home() {
       setOffDays(data.offDays || []);
       setRecords(data.records || {});
       setCustom(data.custom || {});
+      setSpecial(data.special || {});
     }).catch(() => {});
   }, []);
 
-  const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]> }) => {
-    const body = { offDays: next.offDays ?? offDays, records: next.records ?? records, custom: next.custom ?? custom };
+  const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string> }) => {
+    const body = { offDays: next.offDays ?? offDays, records: next.records ?? records, custom: next.custom ?? custom, special: next.special ?? special };
     fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
   };
 
@@ -175,6 +191,14 @@ export default function Home() {
     setNewTask({ title: "", time: "18:30" });
   };
 
+  const updateSpecial = (value: string) => {
+    const next = { ...special };
+    if (value.trim()) next[selected] = value.trim();
+    else delete next[selected];
+    setSpecial(next);
+    save({ special: next });
+  };
+
   const startVoice = () => {
     const Speech = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!Speech || !editing) return;
@@ -198,7 +222,7 @@ export default function Home() {
         <span className="animal animal-whale">🐳<i>· · ·</i></span>
       </div>
       <header>
-        <div className="brand"><span className="logo">夏</span><div><strong>小小暑期</strong><small>成长计划 · 2026</small></div></div>
+        <div className="brand"><span className="logo">D</span><div><strong>Daniel的小小暑假</strong><small>成长计划 · 2026</small></div></div>
         <div className="header-actions">
           <div className="streak"><span>☀️</span><b>{completed}</b><small>今日打卡</small></div>
           <button className="avatar" aria-label="个人中心">小</button>
@@ -237,8 +261,8 @@ export default function Home() {
               <div className="legend"><span><i className="dot orange" />上课日</span><span><i className="dot mint" />休息日</span><span><i className="check-dot">✓</i>已打卡</span></div>
             </div>
             <div className="months">
-              <Month month={7} selected={selected} offDays={offDays} progress={progressByDate} onSelect={setSelected} />
-              <Month month={8} selected={selected} offDays={offDays} progress={progressByDate} onSelect={setSelected} />
+              <Month month={7} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} onSelect={setSelected} />
+              <Month month={8} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} onSelect={setSelected} />
             </div>
           </section>
         ) : null}
@@ -252,6 +276,20 @@ export default function Home() {
             <div className="progress-card">
               <div><span>今日完成</span><b>{completed} / {items.length}</b></div>
               <div className="bar"><i style={{ width: `${items.length ? completed / items.length * 100 : 0}%` }} /></div>
+            </div>
+            <div className="special-card">
+              <label htmlFor="special-emoji">今天的特别活动</label>
+              <div>
+                <input
+                  id="special-emoji"
+                  aria-label="特别活动 Emoji"
+                  value={special[selected] || ""}
+                  maxLength={8}
+                  onChange={(e) => updateSpecial(e.target.value)}
+                  placeholder="🏰"
+                />
+                <span>输入一个 Emoji，例如去迪士尼用 🏰</span>
+              </div>
             </div>
           </aside>
 

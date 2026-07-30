@@ -94,18 +94,18 @@ h2 { font: 800 29px Georgia, "Songti SC", serif; margin: 0; }
 .month-title strong { font: 800 25px Georgia, serif; }
 .week-row, .date-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
 .week-row span { font-size: 10px; color: #999f99; padding: 8px 0; }
-.date-grid button, .blank { aspect-ratio: 1.15; margin: 2px; }
-.date-grid button { border: 0; border-radius: 50%; background: transparent; position: relative; cursor: pointer; transition: .2s; font-weight: 600; }
+.date-grid button, .blank { min-height: 54px; margin: 2px; }
+.date-grid button { border: 0; border-radius: 14px; background: transparent; position: relative; cursor: pointer; transition: .2s; font-weight: 600; padding: 12px 1px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .date-grid button:hover { background: #f2eee5; }
-.date-grid button i { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 7px; color: var(--orange); }
-.date-grid button.class-day:after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--orange); position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%); }
-.date-grid button.class-day i:not(:empty), .date-grid button.off-day i { bottom: 2px; }
-.date-grid button.class-day i:not(:empty) + * { display:none; }
+.date-number { font-size: 12px; line-height: 1; }
+.activity-icons { display: flex; align-items: center; justify-content: center; min-height: 13px; margin-top: 5px; letter-spacing: -2px; }
+.activity-icons i { position: static; transform: none; font-style: normal; font-size: 9px; line-height: 1; }
+.special-emoji { position: absolute; right: 1px; top: -4px; font-size: 14px; filter: drop-shadow(0 2px 2px rgba(42,55,47,.15)); z-index: 2; }
+.date-check { position: absolute; left: 1px; top: 1px; width: 13px; height: 13px; display: grid; place-items: center; background: var(--mint); color: white; border-radius: 50%; font-size: 8px; }
+.rest-label { color: #74a18f; font-size: 8px; margin-top: 3px; }
 .date-grid button.off-day { color: #74a18f; }
-.date-grid button.off-day i { color: #74a18f; }
 .date-grid button.selected { background: var(--ink); color: white; box-shadow: 0 4px 0 #b7c5bc; }
-.date-grid button.selected i { color: #ffd3b8; }
-.date-grid button.selected:after { background: #ffd3b8; }
+.date-grid button.selected .date-check { background: var(--orange); }
 .day-section { display: grid; grid-template-columns: 280px 1fr; gap: 58px; border-top: 1px solid var(--line); padding-top: 58px; }
 .date-display { display: flex; gap: 14px; align-items: center; }
 .date-display > strong { font: 800 74px/1 Georgia, serif; color: var(--orange); }
@@ -120,6 +120,12 @@ h2 { font: 800 29px Georgia, "Songti SC", serif; margin: 0; }
 .progress-card b { color: var(--orange); }
 .bar { margin-top: 10px; height: 5px; border-radius: 10px; background: #e7e1d6; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--orange); transition: .3s; }
+.special-card { margin-top: 12px; background: rgba(255,253,248,.8); border: 1px solid var(--line); padding: 14px; border-radius: 10px; }
+.special-card label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 9px; }
+.special-card > div { display: flex; align-items: center; gap: 9px; }
+.special-card input { width: 46px; height: 42px; text-align: center; border: 1px solid var(--line); border-radius: 9px; background: white; font-size: 22px; outline: none; }
+.special-card input:focus { border-color: var(--orange); }
+.special-card span { font-size: 9px; line-height: 1.5; color: #879087; }
 .agenda { min-width: 0; }
 .task { display: grid; grid-template-columns: 105px 42px 1fr 40px 40px; gap: 16px; align-items: center; background: rgba(255,253,248,.92); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 11px; transition: .2s; backdrop-filter: blur(7px); }
 .task:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(40,56,47,.06); }
@@ -201,7 +207,8 @@ textarea:focus { border-color: var(--orange); }
   .calendar-heading { align-items: start; gap: 16px; }
   .legend { display: grid; gap: 4px; }
   .month-card { padding: 20px 12px 22px; }
-  .date-grid button, .blank { aspect-ratio: 1; margin: 1px; }
+  .date-grid button, .blank { min-height: 49px; margin: 1px; }
+  .activity-icons i { font-size: 8px; }
   .calendar-wrap { margin-bottom: 45px; }
   .day-section { padding-top: 40px; }
   .day-intro { display: block; }
