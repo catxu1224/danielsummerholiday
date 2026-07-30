@@ -61,6 +61,7 @@ function Month({
   progress,
   custom,
   special,
+  scheduleOverrides,
   onSelect,
 }: {
   month: number;
@@ -69,6 +70,7 @@ function Month({
   progress: Record<string, boolean>;
   custom: Record<string, Item[]>;
   special: Record<string, string>;
+  scheduleOverrides: Record<string, Partial<Item> & { deleted?: boolean }>;
   onSelect: (key: string) => void;
 }) {
   const first = new Date(2026, month - 1, 1);
@@ -86,7 +88,10 @@ function Month({
           const weekday = new Date(2026, month - 1, day).getDay();
           const classDay = weekday >= 1 && weekday <= 5 && !offDays.includes(key);
           const off = weekday >= 1 && weekday <= 5 && offDays.includes(key);
-          const dayItems = [...baseItems(key, offDays), ...(custom[key] || [])];
+          const dayItems = [
+            ...baseItems(key, offDays).map((item) => ({ ...item, ...scheduleOverrides[item.id] })),
+            ...(custom[key] || []),
+          ].filter((item) => !(item as Item & { deleted?: boolean }).deleted);
           const icons = [
             dayItems.some((item) => item.kind === "class") ? "📚" : "",
             dayItems.some((item) => item.title.includes("钢琴")) ? "🎹" : "",
@@ -119,6 +124,7 @@ export default function Home() {
   const [records, setRecords] = useState<Record<string, Partial<Item>>>({});
   const [custom, setCustom] = useState<Record<string, Item[]>>({});
   const [special, setSpecial] = useState<Record<string, string>>({});
+  const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, Partial<Item> & { deleted?: boolean }>>({});
   const [syncState, setSyncState] = useState<"loading" | "saved" | "saving" | "offline">("loading");
   const [editing, setEditing] = useState<Item | null>(null);
   const [showCalendar, setShowCalendar] = useState(true);
@@ -138,6 +144,7 @@ export default function Home() {
       setRecords(data.records || {});
       setCustom(data.custom || {});
       setSpecial(data.special || {});
+      setScheduleOverrides(data.scheduleOverrides || {});
       setSyncState("saved");
     }).catch(() => setSyncState("offline"));
   };
@@ -155,8 +162,14 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string> }) => {
-    const body = { offDays: next.offDays ?? offDays, records: next.records ?? records, custom: next.custom ?? custom, special: next.special ?? special };
+  const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string>; scheduleOverrides?: Record<string, Partial<Item> & { deleted?: boolean }> }) => {
+    const body = {
+      offDays: next.offDays ?? offDays,
+      records: next.records ?? records,
+      custom: next.custom ?? custom,
+      special: next.special ?? special,
+      scheduleOverrides: next.scheduleOverrides ?? scheduleOverrides,
+    };
     setSyncState("saving");
     fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
       .then((r) => r.ok ? r.json() : Promise.reject())
@@ -165,10 +178,10 @@ export default function Home() {
   };
 
   const items = useMemo(() => [
-    ...baseItems(selected, offDays),
+    ...baseItems(selected, offDays).map((item) => ({ ...item, ...scheduleOverrides[item.id] })),
     ...(custom[selected] || []),
-  ].map((item) => ({ ...item, ...records[item.id] }))
-    .sort((a, b) => a.time.localeCompare(b.time)), [selected, offDays, custom, records]);
+  ].filter((item) => !(item as Item & { deleted?: boolean }).deleted).map((item) => ({ ...item, ...records[item.id] }))
+    .sort((a, b) => a.time.localeCompare(b.time)), [selected, offDays, custom, records, scheduleOverrides]);
 
   const date = parseKey(selected);
   const weekday = date.getDay();
@@ -205,14 +218,24 @@ export default function Home() {
   const addTask = () => {
     if (!newTask.title.trim()) return;
     if (editingTaskId) {
-      const next = {
-        ...custom,
-        [selected]: (custom[selected] || []).map((item) =>
-          item.id === editingTaskId ? { ...item, title: newTask.title.trim(), time: newTask.time } : item
-        ),
-      };
-      setCustom(next);
-      save({ custom: next });
+      const isCustom = (custom[selected] || []).some((item) => item.id === editingTaskId);
+      if (isCustom) {
+        const next = {
+          ...custom,
+          [selected]: (custom[selected] || []).map((item) =>
+            item.id === editingTaskId ? { ...item, title: newTask.title.trim(), time: newTask.time } : item
+          ),
+        };
+        setCustom(next);
+        save({ custom: next });
+      } else {
+        const next = {
+          ...scheduleOverrides,
+          [editingTaskId]: { ...scheduleOverrides[editingTaskId], title: newTask.title.trim(), time: newTask.time },
+        };
+        setScheduleOverrides(next);
+        save({ scheduleOverrides: next });
+      }
       setEditingTaskId(null);
       setNewTask({ title: "", time: "18:30" });
       return;
@@ -242,15 +265,25 @@ export default function Home() {
 
   const deleteCustomTask = () => {
     if (!deleteTarget) return;
-    const nextCustom = {
-      ...custom,
-      [selected]: (custom[selected] || []).filter((item) => item.id !== deleteTarget.id),
-    };
+    const isCustom = (custom[selected] || []).some((item) => item.id === deleteTarget.id);
     const nextRecords = { ...records };
     delete nextRecords[deleteTarget.id];
-    setCustom(nextCustom);
     setRecords(nextRecords);
-    save({ custom: nextCustom, records: nextRecords });
+    if (isCustom) {
+      const nextCustom = {
+        ...custom,
+        [selected]: (custom[selected] || []).filter((item) => item.id !== deleteTarget.id),
+      };
+      setCustom(nextCustom);
+      save({ custom: nextCustom, records: nextRecords });
+    } else {
+      const nextOverrides = {
+        ...scheduleOverrides,
+        [deleteTarget.id]: { ...scheduleOverrides[deleteTarget.id], deleted: true },
+      };
+      setScheduleOverrides(nextOverrides);
+      save({ scheduleOverrides: nextOverrides, records: nextRecords });
+    }
     if (editingTaskId === deleteTarget.id) cancelEditTask();
     setDeleteTarget(null);
   };
@@ -329,8 +362,8 @@ export default function Home() {
               <div className="legend"><span><i className="dot orange" />上课日</span><span><i className="dot mint" />休息日</span><span><i className="check-dot">✓</i>已打卡</span></div>
             </div>
             <div className="months">
-              <Month month={7} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} onSelect={setSelected} />
-              <Month month={8} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} onSelect={setSelected} />
+              <Month month={7} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} scheduleOverrides={scheduleOverrides} onSelect={setSelected} />
+              <Month month={8} selected={selected} offDays={offDays} progress={progressByDate} custom={custom} special={special} scheduleOverrides={scheduleOverrides} onSelect={setSelected} />
             </div>
           </section>
         ) : null}
@@ -373,10 +406,8 @@ export default function Home() {
                   {(item.note || item.mood) && <p className="saved-note">{item.mood} {item.note}</p>}
                 </div>
                 <div className="task-actions">
-                  {item.kind === "free" && <>
-                    <button className="manage-btn" onClick={() => startEditTask(item)} aria-label={`修改${item.title}`}>✎</button>
-                    <button className="manage-btn delete" onClick={() => setDeleteTarget(item)} aria-label={`删除${item.title}`}>×</button>
-                  </>}
+                  <button className="manage-btn" onClick={() => startEditTask(item)} aria-label={`修改${item.title}`}>✎</button>
+                  <button className="manage-btn delete" onClick={() => setDeleteTarget(item)} aria-label={`删除${item.title}`}>×</button>
                   <button className="note-btn" onClick={() => setEditing(item)} aria-label={`记录${item.title}体验`}>☻</button>
                 </div>
                 <button className="check-btn" onClick={() => toggleComplete(item)} aria-label={`${item.completed ? "取消" : ""}完成${item.title}`}>{item.completed ? "✓" : ""}</button>
@@ -384,7 +415,7 @@ export default function Home() {
             ))}
 
             <div className={`add-card ${editingTaskId ? "editing" : ""}`} id="free-activity-form">
-              <div><span>{editingTaskId ? "✎" : "＋"}</span><div><h3>{editingTaskId ? "修改自由活动" : "添加自由活动"}</h3><p>{editingTaskId ? "修改完成后点击保存" : "画画、阅读、和朋友玩……"}</p></div></div>
+              <div><span>{editingTaskId ? "✎" : "＋"}</span><div><h3>{editingTaskId ? "修改当天安排" : "添加自由活动"}</h3><p>{editingTaskId ? "本次修改只影响所选日期" : "画画、阅读、和朋友玩……"}</p></div></div>
               <div className="add-form">
                 <input aria-label="活动时间" type="time" value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} />
                 <input aria-label="活动内容" placeholder="今天还想做什么？" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTask()} />
@@ -422,7 +453,7 @@ export default function Home() {
           <section className="confirm-card" role="alertdialog" aria-modal="true" aria-label="确认删除活动">
             <span>🗑️</span>
             <h2>删除这个活动？</h2>
-            <p>“{deleteTarget.title}”及其打卡和体验记录都会被删除。</p>
+            <p>“{deleteTarget.title}”及其打卡和体验记录都会从这一天删除，其他日期不受影响。</p>
             <div>
               <button onClick={() => setDeleteTarget(null)}>保留活动</button>
               <button className="danger" onClick={deleteCustomTask}>确认删除</button>
