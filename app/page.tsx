@@ -119,24 +119,47 @@ export default function Home() {
   const [records, setRecords] = useState<Record<string, Partial<Item>>>({});
   const [custom, setCustom] = useState<Record<string, Item[]>>({});
   const [special, setSpecial] = useState<Record<string, string>>({});
+  const [syncState, setSyncState] = useState<"loading" | "saved" | "saving" | "offline">("loading");
   const [editing, setEditing] = useState<Item | null>(null);
   const [showCalendar, setShowCalendar] = useState(true);
   const [newTask, setNewTask] = useState({ title: "", time: "18:30" });
   const recognitionRef = useRef<any>(null);
 
-  useEffect(() => {
-    fetch("/api/plan").then((r) => r.ok ? r.json() : null).then((data) => {
-      if (!data) return;
+  const loadCloudState = () => {
+    setSyncState("loading");
+    fetch("/api/plan", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((data) => {
+      if (!data || data.synced === false) {
+        setSyncState("offline");
+        return;
+      }
       setOffDays(data.offDays || []);
       setRecords(data.records || {});
       setCustom(data.custom || {});
       setSpecial(data.special || {});
-    }).catch(() => {});
+      setSyncState("saved");
+    }).catch(() => setSyncState("offline"));
+  };
+
+  useEffect(() => {
+    loadCloudState();
+    const onFocus = () => loadCloudState();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+    // The cloud loader intentionally runs once and again when this device returns to the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string> }) => {
     const body = { offDays: next.offDays ?? offDays, records: next.records ?? records, custom: next.custom ?? custom, special: next.special ?? special };
-    fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    setSyncState("saving");
+    fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then(() => setSyncState("saved"))
+      .catch(() => setSyncState("offline"));
   };
 
   const items = useMemo(() => [
@@ -224,6 +247,10 @@ export default function Home() {
       <header>
         <div className="brand"><span className="logo">D</span><div><strong>Daniel的小小暑假</strong><small>成长计划 · 2026</small></div></div>
         <div className="header-actions">
+          <div className={`sync-status ${syncState}`}>
+            <i />
+            <span>{syncState === "saving" ? "正在同步" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : "同步失败"}</span>
+          </div>
           <div className="streak"><span>☀️</span><b>{completed}</b><small>今日打卡</small></div>
           <button className="avatar" aria-label="个人中心">小</button>
         </div>

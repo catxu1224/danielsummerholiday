@@ -8,6 +8,13 @@
       "when": 1785401020826,
       "tag": "0000_lying_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785415231461,
+      "tag": "0001_regular_cloak",
+      "breakpoints": true
     }
   ]
 }

@@ -52,6 +52,13 @@ header {
 .brand strong { font: 800 18px serif; letter-spacing: 2px; }
 .brand small { font-size: 10px; color: #8f978f; letter-spacing: 2px; margin-top: 2px; }
 .header-actions { gap: 22px; }
+.sync-status { display: flex; align-items: center; gap: 6px; color: #758078; font-size: 10px; white-space: nowrap; }
+.sync-status i { width: 7px; height: 7px; border-radius: 50%; background: #9da49e; }
+.sync-status.saved i { background: #69a98d; box-shadow: 0 0 0 3px rgba(105,169,141,.13); }
+.sync-status.saving i, .sync-status.loading i { background: #e7a75e; animation: syncPulse 1s ease-in-out infinite; }
+.sync-status.offline { color: #b25f4b; }
+.sync-status.offline i { background: #d2735e; }
+@keyframes syncPulse { 50% { transform: scale(.55); opacity: .55; } }
 .streak { gap: 7px; border-right: 1px solid var(--line); padding-right: 22px; }
 .streak span { font-size: 25px; }
 .streak b { color: var(--orange); font-size: 21px; }
@@ -189,6 +196,7 @@ textarea:focus { border-color: var(--orange); }
   header { height: 66px; padding: 0 16px; }
   .shell { padding: 0 14px 55px; }
   .brand small, .streak small { display: none; }
+  .sync-status span { display: none; }
   .streak { border: 0; padding: 0; }
   .avatar { display: none; }
   .summer-decor .animal { width: 48px; height: 48px; font-size: 25px; opacity: .75; }
