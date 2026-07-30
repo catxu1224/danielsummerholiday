@@ -188,6 +188,15 @@ export default function Home() {
 
   return (
     <main>
+      <div className="summer-decor" aria-hidden="true">
+        <span className="blob blob-one" />
+        <span className="blob blob-two" />
+        <span className="blob blob-three" />
+        <span className="animal animal-bear">🐻<i>✦</i></span>
+        <span className="animal animal-rabbit">🐰<i>♪</i></span>
+        <span className="animal animal-duck">🐥<i>●</i></span>
+        <span className="animal animal-whale">🐳<i>· · ·</i></span>
+      </div>
       <header>
         <div className="brand"><span className="logo">夏</span><div><strong>小小暑期</strong><small>成长计划 · 2026</small></div></div>
         <div className="header-actions">
@@ -207,6 +216,11 @@ export default function Home() {
             <div><strong>{classCount}</strong><span>计划上课日</span></div>
             <div><strong>{offDays.length}</strong><span>调整休息日</span></div>
             <div><strong>9</strong><span>快乐成长周</span></div>
+          </div>
+          <div className="hero-friends" aria-hidden="true">
+            <span className="leaf">☘</span>
+            <span className="fox">🦊</span>
+            <span className="butterfly">🦋</span>
           </div>
         </section>
 
