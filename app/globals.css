@@ -97,16 +97,16 @@ h2 { font: 800 29px Georgia, "Songti SC", serif; margin: 0; }
 .months { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .month-card { background: rgba(255,253,248,.91); border: 1px solid var(--line); border-radius: 12px; padding: 26px 28px 30px; box-shadow: 0 16px 40px rgba(40,56,47,.06); backdrop-filter: blur(8px); }
 .month-title { display: flex; align-items: baseline; gap: 9px; border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 12px; }
-.month-title span { font-size: 10px; color: #9aa098; letter-spacing: 2px; }
-.month-title strong { font: 800 25px Georgia, serif; }
+.month-title span { font-size: 12px; color: #9aa098; letter-spacing: 2px; }
+.month-title strong { font: 800 30px Georgia, serif; }
 .week-row, .date-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
-.week-row span { font-size: 10px; color: #999f99; padding: 8px 0; }
-.date-grid button, .blank { min-height: 54px; margin: 2px; }
+.week-row span { font-size: 13px; font-weight: 700; color: #858d86; padding: 10px 0; }
+.date-grid button, .blank { min-height: 64px; margin: 2px; }
 .date-grid button { border: 0; border-radius: 14px; background: transparent; position: relative; cursor: pointer; transition: .2s; font-weight: 600; padding: 12px 1px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .date-grid button:hover { background: #f2eee5; }
-.date-number { font-size: 12px; line-height: 1; }
+.date-number { font-size: 17px; line-height: 1; font-weight: 800; }
 .activity-icons { display: flex; align-items: center; justify-content: center; min-height: 13px; margin-top: 5px; letter-spacing: -2px; }
-.activity-icons i { position: static; transform: none; font-style: normal; font-size: 9px; line-height: 1; }
+.activity-icons i { position: static; transform: none; font-style: normal; font-size: 11px; line-height: 1; }
 .special-emoji { position: absolute; right: 1px; top: -4px; font-size: 14px; filter: drop-shadow(0 2px 2px rgba(42,55,47,.15)); z-index: 2; }
 .date-check { position: absolute; left: 1px; top: 1px; width: 13px; height: 13px; display: grid; place-items: center; background: var(--mint); color: white; border-radius: 50%; font-size: 8px; }
 .rest-label { color: #74a18f; font-size: 8px; margin-top: 3px; }
@@ -229,8 +229,10 @@ textarea:focus { border-color: var(--orange); }
   .calendar-heading { align-items: start; gap: 16px; }
   .legend { display: grid; gap: 4px; }
   .month-card { padding: 20px 12px 22px; }
-  .date-grid button, .blank { min-height: 49px; margin: 1px; }
-  .activity-icons i { font-size: 8px; }
+  .week-row span { font-size: 12px; }
+  .date-grid button, .blank { min-height: 56px; margin: 1px; }
+  .date-number { font-size: 15px; }
+  .activity-icons i { font-size: 9px; }
   .calendar-wrap { margin-bottom: 45px; }
   .day-section { padding-top: 40px; }
   .day-intro { display: block; }
