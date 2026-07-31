@@ -183,12 +183,14 @@ export default function Home() {
         setSyncState(local ? "local" : "offline");
         return;
       }
-      const cloudIsNewer = Boolean(data.updatedAt) && (!local?.updatedAt || data.updatedAt >= local.updatedAt);
-      if (cloudIsNewer || !local) {
+      // PostgreSQL is authoritative across devices. Device timestamps are not
+      // comparable and must never let stale local data overwrite cloud state.
+      if (data.updatedAt) {
         const cloudPlan = applyPlan(data);
         window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: cloudPlan, updatedAt: data.updatedAt || new Date().toISOString() }));
         setSyncState("saved");
-      } else {
+      } else if (local?.data) {
+        // Only seed PostgreSQL from local storage when the cloud has no record.
         setSyncState("saving");
         fetch("/api/plan", {
           method: "POST",
@@ -199,6 +201,10 @@ export default function Home() {
           window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: local!.data, updatedAt: result.updatedAt }));
           setSyncState("saved");
         }).catch(() => setSyncState("offline"));
+      } else {
+        const emptyPlan = applyPlan(data);
+        window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: emptyPlan, updatedAt: new Date().toISOString() }));
+        setSyncState("saved");
       }
     }).catch(() => setSyncState(local ? "local" : "offline"));
   };
