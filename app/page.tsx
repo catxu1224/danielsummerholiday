@@ -132,6 +132,15 @@ export default function Home() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
   const recognitionRef = useRef<any>(null);
+  const pendingSavesRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const planRef = useRef({
+    offDays: [] as string[],
+    records: {} as Record<string, Partial<Item>>,
+    custom: {} as Record<string, Item[]>,
+    special: {} as Record<string, string>,
+    scheduleOverrides: {} as Record<string, Partial<Item> & { deleted?: boolean }>,
+  });
 
   const loadCloudState = () => {
     setSyncState("loading");
@@ -145,13 +154,22 @@ export default function Home() {
       setCustom(data.custom || {});
       setSpecial(data.special || {});
       setScheduleOverrides(data.scheduleOverrides || {});
+      planRef.current = {
+        offDays: data.offDays || [],
+        records: data.records || {},
+        custom: data.custom || {},
+        special: data.special || {},
+        scheduleOverrides: data.scheduleOverrides || {},
+      };
       setSyncState("saved");
     }).catch(() => setSyncState("offline"));
   };
 
   useEffect(() => {
     loadCloudState();
-    const onFocus = () => loadCloudState();
+    const onFocus = () => {
+      if (document.visibilityState === "visible" && pendingSavesRef.current === 0) loadCloudState();
+    };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
@@ -163,18 +181,25 @@ export default function Home() {
   }, []);
 
   const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string>; scheduleOverrides?: Record<string, Partial<Item> & { deleted?: boolean }> }) => {
-    const body = {
-      offDays: next.offDays ?? offDays,
-      records: next.records ?? records,
-      custom: next.custom ?? custom,
-      special: next.special ?? special,
-      scheduleOverrides: next.scheduleOverrides ?? scheduleOverrides,
-    };
+    planRef.current = { ...planRef.current, ...next };
+    const body = structuredClone(planRef.current);
+    pendingSavesRef.current += 1;
     setSyncState("saving");
-    fetch("/api/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then(() => setSyncState("saved"))
-      .catch(() => setSyncState("offline"));
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      const response = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = response.ok ? await response.json() : null;
+      if (!result?.saved) throw new Error("Cloud save failed");
+    }).then(() => {
+      pendingSavesRef.current -= 1;
+      if (pendingSavesRef.current === 0) setSyncState("saved");
+    }).catch(() => {
+      pendingSavesRef.current -= 1;
+      setSyncState("offline");
+    });
   };
 
   const items = useMemo(() => [
