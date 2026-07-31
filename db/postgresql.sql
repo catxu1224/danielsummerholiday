@@ -28,3 +28,10 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 
 CREATE INDEX IF NOT EXISTS activities_user_date_idx ON activities(user_id, plan_date);
+
+-- Compact synchronized state used by the current family planner UI.
+CREATE TABLE IF NOT EXISTS user_plan_state (
+  user_id TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

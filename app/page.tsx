@@ -126,7 +126,7 @@ export default function Home() {
   const [custom, setCustom] = useState<Record<string, Item[]>>({});
   const [special, setSpecial] = useState<Record<string, string>>({});
   const [scheduleOverrides, setScheduleOverrides] = useState<Record<string, Partial<Item> & { deleted?: boolean }>>({});
-  const [syncState, setSyncState] = useState<"loading" | "saved" | "saving" | "offline">("loading");
+  const [syncState, setSyncState] = useState<"loading" | "saved" | "saving" | "local" | "offline">("loading");
   const [editing, setEditing] = useState<Item | null>(null);
   const [showCalendar, setShowCalendar] = useState(true);
   const [newTask, setNewTask] = useState({ title: "", time: "18:30" });
@@ -172,7 +172,7 @@ export default function Home() {
     if (local?.data) applyPlan(local.data);
     fetch("/api/plan", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((data) => {
       if (!data || data.synced === false) {
-        setSyncState(local ? "saved" : "offline");
+        setSyncState(local ? "local" : "offline");
         return;
       }
       const cloudIsNewer = Boolean(data.updatedAt) && (!local?.updatedAt || data.updatedAt >= local.updatedAt);
@@ -192,7 +192,7 @@ export default function Home() {
           setSyncState("saved");
         }).catch(() => setSyncState("offline"));
       }
-    }).catch(() => setSyncState(local ? "saved" : "offline"));
+    }).catch(() => setSyncState(local ? "local" : "offline"));
   };
 
   useEffect(() => {
@@ -228,7 +228,7 @@ export default function Home() {
         body: JSON.stringify(body),
       });
       const result = response.ok ? await response.json() : null;
-      if (!result?.saved) throw new Error("Cloud save failed");
+      if (!result?.saved || !result?.verified) throw new Error("Cloud save failed");
       try {
         window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: body, updatedAt: result.updatedAt || localUpdatedAt }));
       } catch {
@@ -239,8 +239,35 @@ export default function Home() {
       if (pendingSavesRef.current === 0) setSyncState("saved");
     }).catch(() => {
       pendingSavesRef.current -= 1;
-      setSyncState("offline");
+      setSyncState("local");
     });
+  };
+
+  const applyExistingTaskEdit = (draft: { title: string; time: string }) => {
+    if (!editingTaskId) return;
+    const isCustom = (custom[selected] || []).some((item) => item.id === editingTaskId);
+    if (isCustom) {
+      const next = {
+        ...custom,
+        [selected]: (custom[selected] || []).map((item) =>
+          item.id === editingTaskId ? { ...item, title: draft.title, time: draft.time } : item
+        ),
+      };
+      setCustom(next);
+      save({ custom: next });
+    } else {
+      const next = {
+        ...scheduleOverrides,
+        [editingTaskId]: { ...scheduleOverrides[editingTaskId], title: draft.title, time: draft.time },
+      };
+      setScheduleOverrides(next);
+      save({ scheduleOverrides: next });
+    }
+  };
+
+  const updateTaskDraft = (draft: { title: string; time: string }) => {
+    setNewTask(draft);
+    if (editingTaskId) applyExistingTaskEdit(draft);
   };
 
   const items = useMemo(() => [
@@ -284,24 +311,7 @@ export default function Home() {
   const addTask = () => {
     if (!newTask.title.trim()) return;
     if (editingTaskId) {
-      const isCustom = (custom[selected] || []).some((item) => item.id === editingTaskId);
-      if (isCustom) {
-        const next = {
-          ...custom,
-          [selected]: (custom[selected] || []).map((item) =>
-            item.id === editingTaskId ? { ...item, title: newTask.title.trim(), time: newTask.time } : item
-          ),
-        };
-        setCustom(next);
-        save({ custom: next });
-      } else {
-        const next = {
-          ...scheduleOverrides,
-          [editingTaskId]: { ...scheduleOverrides[editingTaskId], title: newTask.title.trim(), time: newTask.time },
-        };
-        setScheduleOverrides(next);
-        save({ scheduleOverrides: next });
-      }
+      applyExistingTaskEdit({ title: newTask.title.trim(), time: newTask.time });
       setEditingTaskId(null);
       setNewTask({ title: "", time: "18:30" });
       return;
@@ -389,7 +399,7 @@ export default function Home() {
         <div className="header-actions">
           <div className={`sync-status ${syncState}`}>
             <i />
-            <span>{syncState === "saving" ? "正在同步" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : "同步失败"}</span>
+            <span>{syncState === "saving" ? "正在同步" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : syncState === "local" ? "仅本机保存" : "同步失败"}</span>
           </div>
           <div className="streak"><span>☀️</span><b>{completed}</b><small>今日打卡</small></div>
           <button className="avatar" aria-label="个人中心">小</button>
@@ -481,11 +491,11 @@ export default function Home() {
             ))}
 
             <div className={`add-card ${editingTaskId ? "editing" : ""}`} id="free-activity-form">
-              <div><span>{editingTaskId ? "✎" : "＋"}</span><div><h3>{editingTaskId ? "修改当天安排" : "添加自由活动"}</h3><p>{editingTaskId ? "本次修改只影响所选日期" : "画画、阅读、和朋友玩……"}</p></div></div>
+              <div><span>{editingTaskId ? "✎" : "＋"}</span><div><h3>{editingTaskId ? "修改当天安排" : "添加自由活动"}</h3><p>{editingTaskId ? "输入内容会自动保存，仅影响所选日期" : "画画、阅读、和朋友玩……"}</p></div></div>
               <div className="add-form">
-                <input aria-label="活动时间" type="time" value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} />
-                <input aria-label="活动内容" placeholder="今天还想做什么？" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTask()} />
-                <button onClick={addTask}>{editingTaskId ? "保存" : "添加"}</button>
+                <input aria-label="活动时间" type="time" value={newTask.time} onChange={(e) => updateTaskDraft({ ...newTask, time: e.target.value })} />
+                <input aria-label="活动内容" placeholder="今天还想做什么？" value={newTask.title} onChange={(e) => updateTaskDraft({ ...newTask, title: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTask()} />
+                <button onClick={addTask}>{editingTaskId ? "完成" : "添加"}</button>
               </div>
               {editingTaskId && <button className="cancel-edit" onClick={cancelEditTask}>取消修改</button>}
             </div>

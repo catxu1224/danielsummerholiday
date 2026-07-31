@@ -58,6 +58,8 @@ header {
 .sync-status.saving i, .sync-status.loading i { background: #e7a75e; animation: syncPulse 1s ease-in-out infinite; }
 .sync-status.offline { color: #b25f4b; }
 .sync-status.offline i { background: #d2735e; }
+.sync-status.local { color: #a56d28; }
+.sync-status.local i { background: #e3a24e; box-shadow: 0 0 0 3px rgba(227,162,78,.13); }
 @keyframes syncPulse { 50% { transform: scale(.55); opacity: .55; } }
 .streak { gap: 7px; border-right: 1px solid var(--line); padding-right: 22px; }
 .streak span { font-size: 25px; }
