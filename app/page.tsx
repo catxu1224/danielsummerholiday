@@ -142,7 +142,6 @@ export default function Home() {
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
   const recognitionRef = useRef<any>(null);
   const pendingSavesRef = useRef(0);
-  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const planRef = useRef({
     offDays: [] as string[],
     records: {} as Record<string, Partial<Item>>,
@@ -234,9 +233,14 @@ export default function Home() {
     } catch {
       // Cloud saving still proceeds when device storage is unavailable.
     }
+    setSyncState("local");
+  };
+
+  const submitToCloud = async () => {
+    const body = structuredClone(planRef.current);
     pendingSavesRef.current += 1;
     setSyncState("saving");
-    saveQueueRef.current = saveQueueRef.current.then(async () => {
+    try {
       const response = await fetch("/api/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -249,13 +253,12 @@ export default function Home() {
       } catch {
         // The cloud copy is authoritative when device storage is unavailable.
       }
-    }).then(() => {
       pendingSavesRef.current -= 1;
-      if (pendingSavesRef.current === 0) setSyncState("saved");
-    }).catch(() => {
+      setSyncState("saved");
+    } catch {
       pendingSavesRef.current -= 1;
       setSyncState("local");
-    });
+    }
   };
 
   const applyExistingTaskEdit = (draft: { title: string; time: string }) => {
@@ -412,9 +415,12 @@ export default function Home() {
       <header>
         <div className="brand"><span className="logo">D</span><div><strong>Daniel的小小暑假</strong><small>成长计划 · 2026</small></div></div>
         <div className="header-actions">
+          <button className="cloud-submit" onClick={submitToCloud} disabled={syncState === "saving" || syncState === "loading"}>
+            {syncState === "saving" ? "提交中…" : "提交到云端"}
+          </button>
           <div className={`sync-status ${syncState}`}>
             <i />
-            <span>{syncState === "saving" ? "正在同步" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : syncState === "local" ? "仅本机保存" : "同步失败"}</span>
+            <span>{syncState === "saving" ? "正在提交" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : syncState === "local" ? "有修改待提交" : "同步失败"}</span>
           </div>
           <div className="streak"><span>☀️</span><b>{completed}</b><small>今日打卡</small></div>
           <button className="avatar" aria-label="个人中心">小</button>
