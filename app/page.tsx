@@ -34,6 +34,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseKey = (key: string) => new Date(`${key}T12:00:00`);
 const cnWeek = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const LOCAL_PLAN_KEY = "daniel-summer-plan-v1";
 
 function baseItems(key: string, offDays: string[]): Item[] {
   const date = parseKey(key);
@@ -142,27 +143,56 @@ export default function Home() {
     scheduleOverrides: {} as Record<string, Partial<Item> & { deleted?: boolean }>,
   });
 
+  const applyPlan = (data: any) => {
+    const plan = {
+      offDays: data.offDays || [],
+      records: data.records || {},
+      custom: data.custom || {},
+      special: data.special || {},
+      scheduleOverrides: data.scheduleOverrides || {},
+    };
+    setOffDays(plan.offDays);
+    setRecords(plan.records);
+    setCustom(plan.custom);
+    setSpecial(plan.special);
+    setScheduleOverrides(plan.scheduleOverrides);
+    planRef.current = plan;
+    return plan;
+  };
+
   const loadCloudState = () => {
     setSyncState("loading");
+    let local: { data: typeof planRef.current; updatedAt: string } | null = null;
+    try {
+      const cached = window.localStorage.getItem(LOCAL_PLAN_KEY);
+      if (cached) local = JSON.parse(cached);
+    } catch {
+      local = null;
+    }
+    if (local?.data) applyPlan(local.data);
     fetch("/api/plan", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((data) => {
       if (!data || data.synced === false) {
-        setSyncState("offline");
+        setSyncState(local ? "saved" : "offline");
         return;
       }
-      setOffDays(data.offDays || []);
-      setRecords(data.records || {});
-      setCustom(data.custom || {});
-      setSpecial(data.special || {});
-      setScheduleOverrides(data.scheduleOverrides || {});
-      planRef.current = {
-        offDays: data.offDays || [],
-        records: data.records || {},
-        custom: data.custom || {},
-        special: data.special || {},
-        scheduleOverrides: data.scheduleOverrides || {},
-      };
-      setSyncState("saved");
-    }).catch(() => setSyncState("offline"));
+      const cloudIsNewer = Boolean(data.updatedAt) && (!local?.updatedAt || data.updatedAt >= local.updatedAt);
+      if (cloudIsNewer || !local) {
+        const cloudPlan = applyPlan(data);
+        window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: cloudPlan, updatedAt: data.updatedAt || new Date().toISOString() }));
+        setSyncState("saved");
+      } else {
+        setSyncState("saving");
+        fetch("/api/plan", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(local.data),
+        }).then((r) => r.ok ? r.json() : Promise.reject()).then((result) => {
+          if (!result?.saved) throw new Error("Cloud save failed");
+          window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: local!.data, updatedAt: result.updatedAt }));
+          setSyncState("saved");
+        }).catch(() => setSyncState("offline"));
+      }
+    }).catch(() => setSyncState(local ? "saved" : "offline"));
   };
 
   useEffect(() => {
@@ -183,6 +213,12 @@ export default function Home() {
   const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string>; scheduleOverrides?: Record<string, Partial<Item> & { deleted?: boolean }> }) => {
     planRef.current = { ...planRef.current, ...next };
     const body = structuredClone(planRef.current);
+    const localUpdatedAt = new Date().toISOString();
+    try {
+      window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: body, updatedAt: localUpdatedAt }));
+    } catch {
+      // Cloud saving still proceeds when device storage is unavailable.
+    }
     pendingSavesRef.current += 1;
     setSyncState("saving");
     saveQueueRef.current = saveQueueRef.current.then(async () => {
@@ -193,6 +229,11 @@ export default function Home() {
       });
       const result = response.ok ? await response.json() : null;
       if (!result?.saved) throw new Error("Cloud save failed");
+      try {
+        window.localStorage.setItem(LOCAL_PLAN_KEY, JSON.stringify({ data: body, updatedAt: result.updatedAt || localUpdatedAt }));
+      } catch {
+        // The cloud copy is authoritative when device storage is unavailable.
+      }
     }).then(() => {
       pendingSavesRef.current -= 1;
       if (pendingSavesRef.current === 0) setSyncState("saved");
