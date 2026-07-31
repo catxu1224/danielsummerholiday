@@ -44,6 +44,18 @@ function currentSummerDateKey() {
   return today;
 }
 
+function weatherDetails(code: number, isDay: number) {
+  if (code === 0) return { icon: isDay ? "☀️" : "🌙", label: "晴" };
+  if (code <= 3) return { icon: "⛅", label: "多云" };
+  if (code === 45 || code === 48) return { icon: "🌫️", label: "有雾" };
+  if (code >= 51 && code <= 67) return { icon: "🌧️", label: "有雨" };
+  if (code >= 71 && code <= 77) return { icon: "🌨️", label: "有雪" };
+  if (code >= 80 && code <= 82) return { icon: "🌦️", label: "阵雨" };
+  if (code >= 85 && code <= 86) return { icon: "🌨️", label: "阵雪" };
+  if (code >= 95) return { icon: "⛈️", label: "雷雨" };
+  return { icon: "🌤️", label: "天气" };
+}
+
 function baseItems(key: string, offDays: string[]): Item[] {
   const date = parseKey(key);
   const day = date.getDay();
@@ -140,6 +152,7 @@ export default function Home() {
   const [newTask, setNewTask] = useState({ title: "", time: "18:30" });
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
+  const [weather, setWeather] = useState<{ icon: string; label: string; temperature: number } | null>(null);
   const recognitionRef = useRef<any>(null);
   const pendingSavesRef = useRef(0);
   const planRef = useRef({
@@ -222,6 +235,18 @@ export default function Home() {
     };
     // The cloud loader intentionally runs once and again when this device returns to the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=31.2304&longitude=121.4737&current=temperature_2m,weather_code,is_day&timezone=Asia%2FShanghai", { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data) => {
+        const details = weatherDetails(data.current.weather_code, data.current.is_day);
+        setWeather({ ...details, temperature: Math.round(data.current.temperature_2m) });
+      })
+      .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   const save = (next: { offDays?: string[]; records?: Record<string, Partial<Item>>; custom?: Record<string, Item[]>; special?: Record<string, string>; scheduleOverrides?: Record<string, Partial<Item> & { deleted?: boolean }> }) => {
@@ -413,17 +438,27 @@ export default function Home() {
         <span className="animal animal-whale">🐳<i>· · ·</i></span>
       </div>
       <header>
-        <div className="brand"><span className="logo">D</span><div><strong>Daniel的小小暑假</strong><small>成长计划 · 2026</small></div></div>
-        <div className="header-actions">
-          <button className="cloud-submit" onClick={submitToCloud} disabled={syncState === "saving" || syncState === "loading"}>
-            {syncState === "saving" ? "提交中…" : "提交到云端"}
-          </button>
+        <div className="header-inner">
+          <div className="header-top">
+            <div className="brand"><span className="logo">D</span><div><strong>Daniel的小小暑假</strong><small>成长计划 · 2026</small></div></div>
+            <div className="header-actions">
+              <div className="weather-chip" title="上海当日天气">
+                <span>{weather?.icon || "🌤️"}</span>
+                <div><b>{weather ? `${weather.temperature}°` : "--°"}</b><small>{weather?.label || "读取天气"} · 上海</small></div>
+              </div>
+              <button className="avatar" aria-label="个人中心">小</button>
+            </div>
+          </div>
+          <div className="header-sync-row">
+            <button className="cloud-submit" onClick={submitToCloud} disabled={syncState === "saving" || syncState === "loading"}>
+              {syncState === "saving" ? "提交中…" : "提交到云端"}
+            </button>
           <div className={`sync-status ${syncState}`}>
             <i />
             <span>{syncState === "saving" ? "正在提交" : syncState === "loading" ? "读取云端" : syncState === "saved" ? "已云端同步" : syncState === "local" ? "有修改待提交" : "同步失败"}</span>
           </div>
-          <div className="streak"><span>☀️</span><b>{completed}</b><small>今日打卡</small></div>
-          <button className="avatar" aria-label="个人中心">小</button>
+            <div className="checkin-count"><b>{completed}</b><span>今日打卡</span></div>
+          </div>
         </div>
       </header>
 

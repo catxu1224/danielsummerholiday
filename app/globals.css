@@ -42,10 +42,13 @@ main { position: relative; overflow: hidden; min-height: 100vh; }
 .animal-whale i { left: -6px; top: -8px; color: #76afca; letter-spacing: 1px; }
 
 header {
-  height: 82px; padding: 0 max(24px, calc((100vw - 1180px) / 2)); display: flex; align-items: center; justify-content: space-between;
+  min-height: 106px; padding: 9px max(24px, calc((100vw - 1180px) / 2)); display: flex; align-items: center;
   background: rgba(255,253,248,.86); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(16px);
 }
-.brand, .header-actions, .streak { display: flex; align-items: center; }
+.header-inner { width: 100%; }
+.header-top, .header-sync-row { display: flex; align-items: center; justify-content: space-between; }
+.header-sync-row { justify-content: flex-end; gap: 12px; min-height: 36px; margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(222,217,205,.65); }
+.brand, .header-actions { display: flex; align-items: center; }
 .brand { gap: 12px; }
 .logo { width: 44px; height: 44px; border-radius: 50% 50% 46% 54%; background: var(--orange); color: white; display: grid; place-items: center; font: 800 21px serif; transform: rotate(-4deg); box-shadow: 3px 4px 0 #f4c2a6; }
 .brand div { display: flex; flex-direction: column; }
@@ -64,10 +67,13 @@ header {
 .sync-status.local { color: #a56d28; }
 .sync-status.local i { background: #e3a24e; box-shadow: 0 0 0 3px rgba(227,162,78,.13); }
 @keyframes syncPulse { 50% { transform: scale(.55); opacity: .55; } }
-.streak { gap: 7px; border-right: 1px solid var(--line); padding-right: 22px; }
-.streak span { font-size: 25px; }
-.streak b { color: var(--orange); font-size: 21px; }
-.streak small { color: #7a867e; }
+.weather-chip { display: flex; align-items: center; gap: 8px; padding-right: 18px; border-right: 1px solid var(--line); }
+.weather-chip > span { font-size: 28px; }
+.weather-chip div { display: flex; flex-direction: column; }
+.weather-chip b { font-size: 17px; line-height: 1; }
+.weather-chip small { color: #7a867e; font-size: 9px; margin-top: 4px; }
+.checkin-count { display: flex; align-items: baseline; gap: 5px; color: #7a867e; font-size: 10px; }
+.checkin-count b { color: var(--orange); font-size: 16px; }
 .avatar { border: 0; width: 42px; height: 42px; border-radius: 50%; background: #dbe8de; font-weight: 800; cursor: pointer; }
 .shell { max-width: 1180px; margin: auto; padding: 0 24px 80px; position: relative; z-index: 1; }
 .hero { min-height: 390px; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; }
@@ -212,13 +218,15 @@ textarea:focus { border-color: var(--orange); }
 }
 
 @media (max-width: 560px) {
-  header { height: 66px; padding: 0 16px; }
+  header { min-height: 105px; padding: 8px 14px; }
   .shell { padding: 0 14px 55px; }
-  .brand small, .streak small { display: none; }
+  .brand small { display: none; }
   .header-actions { gap: 9px; }
   .cloud-submit { padding: 8px 10px; font-size: 10px; }
-  .sync-status span { display: none; }
-  .streak { border: 0; padding: 0; }
+  .sync-status span { display: inline; font-size: 9px; }
+  .weather-chip { padding-right: 0; border: 0; }
+  .weather-chip > span { font-size: 24px; }
+  .weather-chip small { max-width: 68px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .avatar { display: none; }
   .summer-decor .animal { width: 48px; height: 48px; font-size: 25px; opacity: .75; }
   .animal-bear { left: -18px; }
