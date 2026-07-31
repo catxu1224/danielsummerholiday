@@ -68,7 +68,7 @@ function baseItems(key: string, offDays: string[]): Item[] {
   }
   if (day === 6) items.push({ id: `${key}-piano-class`, time: "10:30–11:30", title: "艺点通钢琴课", kind: "fixed" });
   if (day === 0) {
-    items.push({ id: `${key}-fitness`, time: "11:20–12:10", title: "亚东体育体能课", kind: "fixed" });
+    items.push({ id: `${key}-fitness`, time: "11:20–12:10", title: "亚动体育体能课", kind: "fixed" });
     items.push({ id: `${key}-rise`, time: "14:00–17:10", title: "瑞思英语", kind: "fixed" });
   }
   if (day === 2 || day === 4) items.push({ id: `${key}-piano-practice`, time: "17:00–18:00", title: "钢琴练习", kind: "fixed" });
