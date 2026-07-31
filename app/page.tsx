@@ -36,6 +36,14 @@ const parseKey = (key: string) => new Date(`${key}T12:00:00`);
 const cnWeek = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const LOCAL_PLAN_KEY = "daniel-summer-plan-v1";
 
+function currentSummerDateKey() {
+  const now = new Date();
+  const today = keyOf(now);
+  if (today < "2026-07-01") return "2026-07-01";
+  if (today > "2026-08-31") return "2026-08-31";
+  return today;
+}
+
 function baseItems(key: string, offDays: string[]): Item[] {
   const date = parseKey(key);
   const day = date.getDay();
@@ -120,7 +128,7 @@ function Month({
 }
 
 export default function Home() {
-  const [selected, setSelected] = useState("2026-07-30");
+  const [selected, setSelected] = useState("2026-07-01");
   const [offDays, setOffDays] = useState<string[]>([]);
   const [records, setRecords] = useState<Record<string, Partial<Item>>>({});
   const [custom, setCustom] = useState<Record<string, Item[]>>({});
@@ -196,6 +204,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    setSelected(currentSummerDateKey());
     loadCloudState();
     const onFocus = () => {
       if (document.visibilityState === "visible" && pendingSavesRef.current === 0) loadCloudState();
